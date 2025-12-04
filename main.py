@@ -25,6 +25,13 @@ gravity = 0.4
 new_laser = True
 laser = []
 distance = 0
+high_score = 0
+restart_cmd = False
+
+rocket_counter = 0
+rocket_active = False
+rocket_delay = 0
+rocket_coords = []
 
 
 def draw_screen(line_list, lase):
@@ -45,6 +52,8 @@ def draw_screen(line_list, lase):
     lase_line = pygame.draw.line(screen, 'yellow', (lase[0][0], lase[0][1]), (lase[1][0], lase[1][1]), 10)
     pygame.draw.circle(screen, 'yellow', (lase[0][0], lase[0][1]), 12)
     pygame.draw.circle(screen, 'yellow', (lase[1][0], lase[1][1]), 12)
+    screen.blit(font.render(f'Distance: {int(distance)}m', True, 'white'), (10,10))
+    screen.blit(font.render(f'High Score: {int(high_score)}m', True, 'white'), (10,70))
     return line_list, top, bot, lase, lase_line
 
 def draw_player():
@@ -79,11 +88,37 @@ def draw_player():
 
 def check_colliding():
     coll = [False, False]
+    rstrt = False
     if player.colliderect(bot_plat):
         coll[0] = True
     elif player.colliderect(top_plat):
         coll[1] = True
-    return coll
+    if laser_line.colliderect(player):
+        rstrt = True
+    if rocket_active:
+        if rocket.colliderect(player):
+            rstrt = True
+    return coll, rstrt
+
+
+
+def draw_rocket(coords, mode):
+    if mode == 0:
+        rock = pygame.draw.rect(screen, 'dark red', [coords[0] - 60, coords[1] - 25, 50, 50], 0, 5)
+        screen.blit(font.render('!', True, 'black'), (coords[0] - 40, coords[1] - 20))
+        if not pause:
+            if coords[1] > player_y + 10:
+                coords[1] -= 3
+            else:
+                coords[1] += 3
+    else:
+        rock = pygame.draw.rect(screen, 'red', [coords[0], coords[1] - 10, 50, 20], 0, 5)
+        pygame.draw.ellipse(screen, 'orange', [coords[0] + 50, coords[1] - 10, 50, 20], 7)
+        if not pause:
+            coords[0] -= 10 + game_speed
+    return coords, rock
+
+
 
 def generate_laser():
     laser_type = random.randint(0,1)
@@ -112,8 +147,26 @@ while run:
         laser = generate_laser()
         new_laser = False
     lines, top_plat, bot_plat, laser, laser_line = draw_screen(lines, laser)
+
+    if not rocket_active and not pause:
+        rocket_counter += 1
+    if rocket_counter > 180:
+        rocket_counter = 0
+        rocket_active = True
+        rocket_delay = 0
+        rocket_coords = [WIDTH, HEIGHT/2]
+    if rocket_active:
+        if rocket_delay < 90:
+            if not pause:
+                rocket_delay += 1
+            rocket_coords, rocket = draw_rocket(rocket_coords, 0)
+        else:
+            rocket_coords, rocket = draw_rocket(rocket_coords, 1)
+        if rocket_coords[0] < -50:
+            rocket_active = False
+
     player = draw_player()
-    colliding = check_colliding()
+    colliding, restart_cmd = check_colliding()
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -126,6 +179,7 @@ while run:
                 booster = False
     
     if not pause:
+        distance += game_speed
         if booster:
             y_velocity -= gravity
         else:
@@ -134,8 +188,24 @@ while run:
             y_velocity = 0
         player_y += y_velocity
     
+    if distance < 50000:
+        game_speed = 1 + (distance//500)/10
+    else:
+        game_speed = 11
     if laser[0][0] < 0 and laser[1][0] < 0:
         new_laser = True
     
+    if restart_cmd:
+        distance = 0
+        pause = False
+        player_y = init_y
+        y_velocity = 0
+        restart_cmd = False
+        new_laser = True
+        rocket_active = False
+        rocket_counter = 0
+
+    if distance > high_score:
+        high_score = int(distance)
     pygame.display.flip()
 pygame.quit()
