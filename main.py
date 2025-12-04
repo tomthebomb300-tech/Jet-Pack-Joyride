@@ -22,8 +22,12 @@ booster = False
 counter = 0
 y_velocity = 0
 gravity = 0.4
+new_laser = True
+laser = []
+distance = 0
 
-def draw_screen(line_list):
+
+def draw_screen(line_list, lase):
     screen.fill('black')
     pygame.draw.rect(surface, (bg_color[0], bg_color[1], bg_color[2], 50), [0, 0, WIDTH, HEIGHT])
     screen.blit(surface, (0,0))
@@ -34,9 +38,14 @@ def draw_screen(line_list):
         pygame.draw.line(screen, 'black', (line_list[i], HEIGHT - 50), (line_list[i], HEIGHT), 3)
         if not pause:
             line_list[i] -= game_speed
+            lase[0][0] -= game_speed
+            lase[1][0] -= game_speed
         if line_list[i] < 0:
             line_list[i] = WIDTH
-    return line_list, top, bot
+    lase_line = pygame.draw.line(screen, 'yellow', (lase[0][0], lase[0][1]), (lase[1][0], lase[1][1]), 10)
+    pygame.draw.circle(screen, 'yellow', (lase[0][0], lase[0][1]), 12)
+    pygame.draw.circle(screen, 'yellow', (lase[1][0], lase[1][1]), 12)
+    return line_list, top, bot, lase, lase_line
 
 def draw_player():
     play = pygame.rect.Rect((120, player_y + 10), (25, 60))
@@ -76,6 +85,21 @@ def check_colliding():
         coll[1] = True
     return coll
 
+def generate_laser():
+    laser_type = random.randint(0,1)
+    offset = random.randint(10,300)
+    match laser_type:
+        case 0:
+            laser_width = random.randint(100,300)
+            laser_y = random.randint(100, HEIGHT - 100)
+            new_lase = [[WIDTH + offset, laser_y], [WIDTH + offset + laser_width, laser_y]]
+        case 1:
+            laser_height = random.randint(100,300)
+            laser_y = random.randint(100, HEIGHT - 400)
+            new_lase = [[WIDTH + offset, laser_y], [WIDTH + offset, laser_y + laser_height]]
+    return new_lase
+
+
 run = True
 
 while run:
@@ -84,7 +108,10 @@ while run:
         counter += 1
     else:
         counter = 0
-    lines, top_plat, bot_plat = draw_screen(lines)
+    if new_laser:
+        laser = generate_laser()
+        new_laser = False
+    lines, top_plat, bot_plat, laser, laser_line = draw_screen(lines, laser)
     player = draw_player()
     colliding = check_colliding()
 
@@ -106,5 +133,9 @@ while run:
         if (colliding[0] and y_velocity > 0) or (colliding[1] and y_velocity < 0):
             y_velocity = 0
         player_y += y_velocity
+    
+    if laser[0][0] < 0 and laser[1][0] < 0:
+        new_laser = True
+    
     pygame.display.flip()
 pygame.quit()
